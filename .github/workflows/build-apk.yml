@@ -1,0 +1,57 @@
+name: Build Kivy APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            zip \
+            unzip \
+            openjdk-17-jdk \
+            python3-pip \
+            build-essential \
+            libssl-dev \
+            zlib1g-dev
+
+      - name: Install Buildozer and dependencies
+        run: |
+          pip3 install --user cython==0.29.33
+          pip3 install --user buildozer
+
+      - name: Initialize Buildozer (if no .spec)
+        run: |
+          if [ ! -f buildozer.spec ]; then
+            echo "buildozer.spec not found, generating..."
+            ~/.local/bin/buildozer init
+          fi
+
+      - name: Build APK (Debug)
+        run: |
+          ~/.local/bin/buildozer -v android debug
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kivy-apk
+          path: bin/*.apk
